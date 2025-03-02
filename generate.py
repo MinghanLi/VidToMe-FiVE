@@ -123,7 +123,9 @@ class Generator(nn.Module):
     @torch.no_grad()
     def prepare_data(self, data_path, latent_path, frame_ids):
         self.frames = load_video(data_path, self.frame_height,
-                                 self.frame_width, frame_ids=frame_ids, device=self.device)
+                                 self.frame_width, frame_ids=frame_ids, 
+                                 device=self.device,
+                                 centercrop=False)
         self.init_noise = load_latent(
             latent_path, t=self.scheduler.timesteps[0], frame_ids=frame_ids).to(self.dtype).to(self.device)
 

@@ -16,3 +16,6 @@ assets/
 *.safetensors
 outputs/
 _test*
+
+data/
+workdir/

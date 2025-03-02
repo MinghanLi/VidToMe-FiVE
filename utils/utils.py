@@ -80,7 +80,7 @@ def load_image(image_path):
     return image.unsqueeze(0)
 
 
-def process_frames(frames, h, w):
+def process_frames(frames, h, w, centercrop=False):
 
     fh, fw = frames.shape[-2:]
     h = int(np.floor(h / 64.0)) * 64
@@ -96,15 +96,25 @@ def process_frames(frames, h, w):
     if len(frames.shape) == 3:
         frames = [frames]
 
-    print(
-        f"[INFO] frame size {(fh, fw)} resize to {size} and centercrop to {(h, w)}")
+    if centercrop:
+        print(
+            f"[INFO] frame size {(fh, fw)} resize to {size} and centercrop to {(h, w)}"
+        )
+    else:
+        print(
+            f"[INFO] frame size {(fh, fw)} resize to {(h, w)}"
+        )
 
     frame_ls = []
     for frame in frames:
-        resized_frame = T.Resize(size)(frame)
-        cropped_frame = T.CenterCrop([h, w])(resized_frame)
-        # croped_frame = T.FiveCrop([h, w])(resized_frame)[0]
-        frame_ls.append(cropped_frame)
+        if centercrop:
+            resized_frame = T.Resize(size)(frame)
+            cropped_frame = T.CenterCrop([h, w])(resized_frame)
+            # croped_frame = T.FiveCrop([h, w])(resized_frame)[0]
+            frame_ls.append(cropped_frame)
+        else:
+            resized_frame = T.Resize((h, w))(frame)
+            frame_ls.append(resized_frame)
     return torch.stack(frame_ls)
 
 
@@ -116,7 +126,7 @@ def glob_frame_paths(video_path):
     return frame_paths
 
 
-def load_video(video_path, h, w, frame_ids=None, device="cuda"):
+def load_video(video_path, h, w, frame_ids=None, device="cuda", centercrop=False):
     
 
     if ".mp4" in video_path:
@@ -141,7 +151,7 @@ def load_video(video_path, h, w, frame_ids=None, device="cuda"):
 
     print(f"[INFO] loaded video with {len(frames)} frames from: {video_path}")
 
-    frames = process_frames(frames, h, w)
+    frames = process_frames(frames, h, w, centercrop=centercrop)
     return frames.to(device)
 
 

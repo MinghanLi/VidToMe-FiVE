@@ -2,16 +2,11 @@ import argparse
 from omegaconf import OmegaConf, DictConfig
 import os
 
-def load_config(print_config = True):
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--config', type=str,
-                        default='configs/tea-pour.yaml',
-                        help="Config file path")
-    args = parser.parse_args()
-    config = OmegaConf.load(args.config)
+def load_config(config_path, print_config = True):    
+    config = OmegaConf.load(config_path)
 
     # Recursively merge base configs
-    cur_config_path = args.config
+    cur_config_path = config_path
     cur_config = config
     while "base_config" in cur_config and cur_config.base_config != cur_config_path:
         base_config = OmegaConf.load(cur_config.base_config)

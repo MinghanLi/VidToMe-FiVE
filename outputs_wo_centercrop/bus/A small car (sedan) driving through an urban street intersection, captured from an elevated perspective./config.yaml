@@ -1,0 +1,39 @@
+sd_version: '1.5'
+model_key: runwayml/stable-diffusion-v1-5
+input_path: data/bus
+work_dir: outputs_wo_centercrop//bus
+height: 512
+width: 512
+generation:
+  control: pnp
+  pnp_attn_t: 0.5
+  pnp_f_t: 0.8
+  control_scale: 1.0
+  guidance_scale: 7.5
+  n_timesteps: 50
+  negative_prompt: ugly, blurry, low res
+  prompt:
+    A small car (sedan) driving through an urban street intersection, captured from an elevated perspective.: A
+      small car (sedan) driving through an urban street intersection, captured from
+      an elevated perspective.
+  latents_path: outputs_wo_centercrop//bus/latentss
+  output_path: outputs_wo_centercrop//bus
+  chunk_size: 4
+  chunk_ord: mix-4
+  local_merge_ratio: 0.9
+  merge_global: true
+  global_merge_ratio: 0.8
+  global_rand: 0.5
+  align_batch: true
+  frame_range:
+  - 0
+  - 32
+  - 1
+  frame_ids: null
+  save_frame: true
+  use_lora: false
+seed: 123
+device: cuda
+float_precision: fp16
+enable_xformers_memory_efficient_attention: true
+centercrop: false

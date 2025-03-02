@@ -7,10 +7,11 @@ width: 512
 
 inversion:
   prompt: "flamingos standing in the water near a tree."
+  save_intermediate: True # Save intermediate latents. Required when using PnP.
 
 generation:
-  control: "none"
-  negative_prompt: ""
+  control: "pnp"  # "none"
+  negative_prompt: "ugly, blurry, low res"
   prompt:
     origami: "rainbow-colored origami flamingos standing in the water near a tree."
 

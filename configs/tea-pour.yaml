@@ -7,9 +7,10 @@ width: 512
 
 inversion:
   prompt: "a tea pot pouring tea into a cup."
+  save_intermediate: True # Save intermediate latents. Required when using PnP.
 
 generation:
-  control: "depth"
+  control: "pnp" # "depth"
   control_scale: 1.0
   prompt:
     vector: "vector illustration of a tea pot pouring tea into a cup."
