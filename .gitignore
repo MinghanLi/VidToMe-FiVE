@@ -14,8 +14,9 @@ assets/
 *.json
 *.csv
 *.safetensors
-outputs/
 _test*
 
 data/
 workdir/
+outputs/
+outputs_wo_centercrop/
