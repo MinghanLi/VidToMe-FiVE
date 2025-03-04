@@ -115,7 +115,7 @@ def process_frames(frames, h, w, centercrop=False):
         else:
             resized_frame = T.Resize((h, w))(frame)
             frame_ls.append(resized_frame)
-    return torch.stack(frame_ls)
+    return torch.stack(frame_ls), fh, fw
 
 
 def glob_frame_paths(video_path):
@@ -126,14 +126,14 @@ def glob_frame_paths(video_path):
     return frame_paths
 
 
-def load_video(video_path, h, w, frame_ids=None, device="cuda", centercrop=False):
+def load_video(video_path, h, w, frame_ids=None, device="cuda", centercrop=False, return_ori_hw=False):
     
 
-    if ".mp4" in video_path:
+    if video_path.endswith(".mp4"):
         frames, _, _ = read_video(
             video_path, output_format="TCHW", pts_unit="sec")
         frames = frames / 255
-    elif ".gif" in video_path:
+    elif video_path.endswith(".gif"):
         frames = Image.open(video_path)
         frame_ls = []
         for frame in ImageSequence.Iterator(frames):
@@ -146,13 +146,17 @@ def load_video(video_path, h, w, frame_ids=None, device="cuda", centercrop=False
             frame = load_image(frame_path)
             frame_ls.append(frame)
         frames = torch.cat(frame_ls)
-    if frame_ids is not None:
+    
+    if frame_ids is not None and max(frame_ids) < len(frames):
         frames = frames[frame_ids]
 
     print(f"[INFO] loaded video with {len(frames)} frames from: {video_path}")
 
-    frames = process_frames(frames, h, w, centercrop=centercrop)
-    return frames.to(device)
+    frames, fh_ori, fw_ori = process_frames(frames, h, w, centercrop=centercrop)
+    if return_ori_hw:
+        return frames.to(device), fh_ori, fw_ori
+    else:
+        return frames.to(device)
 
 
 def save_video(frames: torch.Tensor, path, frame_ids=None, save_frame=False):

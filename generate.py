@@ -4,6 +4,7 @@ import numpy as np
 from tqdm import tqdm
 import os
 from transformers import logging
+import torch.nn.functional as F
 
 from utils import CONTROLNET_DICT
 from utils import load_config, save_config
@@ -12,6 +13,14 @@ from utils import prepare_control, load_latent, load_video, prepare_depth, save_
 from utils import register_time, register_attention_control, register_conv_control
 
 import vidtome
+
+def resize_tchw(tensor, target_height, target_width):
+    T, C, H, W = tensor.shape
+    resized_tensor = F.interpolate(tensor.view(T * C, 1, H, W), 
+                                   size=(target_height, target_width), 
+                                   mode="bilinear", align_corners=False)
+    return resized_tensor.view(T, C, target_height, target_width)
+
 
 # suppress partial model loading warning
 logging.set_verbosity_error()
@@ -81,6 +90,7 @@ class Generator(nn.Module):
         self.save_frame = gene_config.save_frame
 
         self.frame_height, self.frame_width = config.height, config.width
+        self.frame_height_ori, self.frame_width_ori = None, None
         self.work_dir = config.work_dir
 
         self.chunk_ord = gene_config.chunk_ord
@@ -122,10 +132,15 @@ class Generator(nn.Module):
 
     @torch.no_grad()
     def prepare_data(self, data_path, latent_path, frame_ids):
-        self.frames = load_video(data_path, self.frame_height,
+        self.frames, self.frame_height_ori, self.frame_width_ori \
+             = load_video(data_path, self.frame_height,
                                  self.frame_width, frame_ids=frame_ids, 
                                  device=self.device,
-                                 centercrop=False)
+                                 centercrop=self.config.centercrop,
+                                 return_ori_hw=True)
+        if len(self.frame_ids) > len(self.frames):
+             self.frame_ids = self.frame_ids[:len(self.frames)]
+             
         self.init_noise = load_latent(
             latent_path, t=self.scheduler.timesteps[0], frame_ids=frame_ids).to(self.dtype).to(self.device)
 
@@ -334,7 +349,7 @@ class Generator(nn.Module):
         return True
 
     @torch.no_grad()
-    def __call__(self, data_path, latent_path, output_path, frame_ids):
+    def __call__(self, data_path, latent_path, output_path, frame_ids, type_idx=None):
         self.scheduler.set_timesteps(self.n_timesteps)
         latent_path = get_latents_dir(latent_path, self.model_key)
         assert self.check_latent_exists(
@@ -356,7 +371,13 @@ class Generator(nn.Module):
             clean_latent = self.ddim_sample(self.init_noise, conds)
             torch.cuda.empty_cache()
             clean_frames = self.decode_latents_batch(clean_latent)
-            cur_output_path = os.path.join(output_path, edit_name)
+            if self.frame_height_ori is not None and self.frame_width_ori is not None:
+                clean_frames = resize_tchw(clean_frames, self.frame_height_ori, self.frame_width_ori)
+
+            if type_idx is None:
+                cur_output_path = os.path.join(output_path, edit_name)
+            else:
+                cur_output_path = os.path.join(output_path, type_idx + '_' + edit_name[:20])
             save_config(self.config, cur_output_path, gene = True)
             save_video(clean_frames, cur_output_path, save_frame = self.save_frame)
 

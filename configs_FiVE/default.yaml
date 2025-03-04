@@ -55,7 +55,7 @@ generation:
   global_rand: 0.5
   align_batch: True
 
-  frame_range: [0, 32, 1] # start, end, interval. == [0, 32] == [32]
+  frame_range: [0, 40, 1] # start, end, interval. == [0, 32] == [32]
   frame_ids: null # Specify frame indexes to edit. It will override frame_range.
   save_frame: True
 

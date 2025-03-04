@@ -1,12 +1,22 @@
 import argparse
 import os
 import json
+import fnmatch
 from omegaconf import OmegaConf, DictConfig
 from invert import Inverter
 from generate import Generator
 from utils import load_config, init_model, seed_everything, get_frame_ids
 
-def main(config):
+
+def list_images(directory):
+    image_extensions = ('*.png', '*.jpg', '*.jpeg')
+
+    images = []
+    for ext in image_extensions:
+        images.extend(fnmatch.filter(os.listdir(directory), ext))
+    return images
+
+def main(config, type_idx=None):
     pipe, scheduler, model_key = init_model(
         config.device, 
         config.sd_version, 
@@ -16,6 +26,17 @@ def main(config):
     )
     config.model_key = model_key
     seed_everything(config.seed)
+
+    # only support video frames as input
+    if not os.path.isdir(config.input_path):
+        raise NotImplementedError
+    len_images = len(list_images(config.input_path))
+    if config.inversion.n_frames is None:
+        config.inversion.n_frames = config.generation.frame_range[1]
+    if len_images < config.inversion.n_frames:
+        n_frames = min(len_images, config.inversion.n_frames)
+        config.inversion.n_frames = n_frames
+        config.generation.frame_range[1] = n_frames
     
     print("Start inversion!")
     inversion = Inverter(pipe, scheduler, config)
@@ -31,7 +52,8 @@ def main(config):
         config.input_path, 
         config.generation.latents_path,
         config.generation.output_path, 
-        frame_ids=frame_ids
+        frame_ids=frame_ids,
+        type_idx=type_idx
     )
 
 
@@ -68,10 +90,12 @@ if __name__ == "__main__":
     else:
         with open(args.configs_file, 'r') as json_file:
             data = json.load(json_file)
-        
+
+        type_idx = args.configs_file.split('/')[-1].split('_')[0].replace("edit", "")
+           
         num_videos = len(data)
         for vid, entry in enumerate(data):
-            print(f"Processing {vid}/{num_videos} video: {entry['video_name']} ...")
+            print(f"Edited type {type_idx}, Processing {vid}/{num_videos} video: {entry['video_name']} ...")
 
             config = load_config(config_path=args.config_base)
 
@@ -79,15 +103,24 @@ if __name__ == "__main__":
             config.input_path = os.path.join(args.data_dir, entry["video_name"])
             config.work_dir = f'{args.output_dir}/{entry["video_name"]}'
             config.inversion.prompt = entry["source_prompt"]  
-            config.inversion.save_path = f'{config.work_dir}/latentss'
-            config.generation.latents_path = f'{config.work_dir}/latentss'
+            config.inversion.save_path = f'{config.work_dir}/latents'
+            config.generation.latents_path = f'{config.work_dir}/latents'
             config.generation.output_path = f'{config.work_dir}'
             config.generation.prompt = {
                 entry["target_prompt"]: entry["target_prompt"]  # save name: tgt prompt
             }  # tgt prompts
 
+            cur_output_path = os.path.join(
+                config.generation.output_path, 
+                type_idx + '_' + entry["target_prompt"][:20], 
+                'output.mp4'
+            )
+            if os.path.exists(cur_output_path):
+                print(f"Existed! Skip {cur_output_path}")
+                continue
+
             OmegaConf.resolve(config)
             print("[INFO] loaded config:")
             print(OmegaConf.to_yaml(config))
 
-            main(config)
+            main(config, type_idx)
