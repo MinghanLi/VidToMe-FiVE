@@ -123,4 +123,7 @@ if __name__ == "__main__":
             print("[INFO] loaded config:")
             print(OmegaConf.to_yaml(config))
 
-            main(config, type_idx)
+            try:
+                main(config, type_idx)
+            except:
+                continue
